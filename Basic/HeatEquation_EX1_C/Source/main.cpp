@@ -25,6 +25,7 @@ void main_main ()
 
     // AMREX_SPACEDIM: number of dimensions
     int n_cell, max_grid_size, nsteps, plot_int;
+    Real beta;
 
     // inputs parameters
     {
@@ -46,6 +47,10 @@ void main_main ()
         // Default nsteps to 10, allow us to set it to something else in the inputs file
         nsteps = 10;
         pp.query("nsteps",nsteps);
+
+        // Scaling parameters associated with mesh transformation
+        beta = 1.001;
+        pp.query("beta",beta);
     }
 
     // make BoxArray and Geometry
@@ -62,8 +67,8 @@ void main_main ()
         ba.maxSize(max_grid_size);
 
        // This defines the physical box, [-1,1] in each direction.
-        RealBox real_box({AMREX_D_DECL(-Real(1.0),-Real(1.0),-Real(1.0))},
-                         {AMREX_D_DECL( Real(1.0), Real(1.0), Real(1.0))});
+        RealBox real_box({AMREX_D_DECL( Real(0.0), Real(0.0), Real(0.0))},
+                         {AMREX_D_DECL( Real(128), Real(128), Real(128))});
 
         // periodic in all direction
         Array<int,AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,1)};
@@ -76,18 +81,22 @@ void main_main ()
     int Nghost = 1;
 
     // Ncomp = number of components for each array
-    int Ncomp  = 1;
+    int Ncomp_scalar  = 1;
+    int Ncomp_vector  = 3;
 
     // How Boxes are distrubuted among MPI processes
     DistributionMapping dm(ba);
 
     // we allocate two phi multifabs; one will store the old state, the other the new.
-    MultiFab phi_old(ba, dm, Ncomp, Nghost);
-    MultiFab phi_new(ba, dm, Ncomp, Nghost);
+    MultiFab phi_old(ba, dm, Ncomp_scalar, Nghost);
+    MultiFab phi_new(ba, dm, Ncomp_scalar, Nghost);
+
+    // coordinate transformation parameter
+    MultiFab d_eta(ba, dm, Ncomp_vector, Nghost);
 
     GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-    init_phi(phi_new, geom);
+    init_vars(d_eta, phi_new, geom, beta);
     // ========================================
 
     Real cfl = 0.9;
@@ -102,9 +111,21 @@ void main_main ()
     // Write a plotfile of the initial data if plot_int > 0 (plot_int was defined in the inputs file)
     if (plot_int > 0)
     {
+        // assemble variables for plotting
+        Vector<std::string> vnames{"d_eta-x", "d_eta-y", "d_eta-z", "phi"};
+        Vector<const MultiFab*> vars;
+        vars.push_back(&d_eta);
+        vars.push_back(&phi_new);
+
         int n = 0;
         const std::string& pltfile = amrex::Concatenate("plt",n,5);
-        WriteSingleLevelPlotfile(pltfile, phi_new, {"phi"}, geom, time, 0);
+        Vector<Geometry> geomarr(1,geom);
+        Vector<int> level_steps(1,n);
+        Vector<IntVect> ref_ratio;
+
+        WriteMultiLevelPlotfile(pltfile, 1, vars, vnames, geomarr, time,
+                                level_steps, ref_ratio);
+//        WriteSingleLevelPlotfile(pltfile, d_eta, {"d_eta"}, geom, time, n);
     }
 
     // build the flux multifabs
@@ -131,8 +152,20 @@ void main_main ()
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && n%plot_int == 0)
         {
+            // assemble variables for plotting
+            Vector<std::string> vnames{"d_eta-x", "d_eta-y", "d_eta-z", "phi"};
+            Vector<const MultiFab*> vars;
+            vars.push_back(&d_eta);
+            vars.push_back(&phi_new);
+
             const std::string& pltfile = amrex::Concatenate("plt",n,5);
-            WriteSingleLevelPlotfile(pltfile, phi_new, {"phi"}, geom, time, n);
+            Vector<Geometry> geomarr(1,geom);
+            Vector<int> level_steps(1,n);
+            Vector<IntVect> ref_ratio;
+
+            WriteMultiLevelPlotfile(pltfile, 1, vars, vnames, geomarr, time,
+                                    level_steps, ref_ratio);
+//            WriteSingleLevelPlotfile(pltfile, d_eta, {"d_eta"}, geom, time, n);
         }
     }
 

@@ -4,6 +4,30 @@
 #include <AMReX_FArrayBox.H>
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void init_d_eta(int i, int j, int k, amrex::Real b,
+              amrex::Array4<amrex::Real> const& d_eta,
+              amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dx,
+              amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& prob_lo,
+              amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& prob_hi)
+{
+    using amrex::Real;
+
+    Real x = prob_lo[0] + (i+Real(0.5)) * dx[0];
+    Real y = prob_lo[1] + (j+Real(0.5)) * dx[1];
+#if (AMREX_SPACEDIM > 2)
+    Real z = prob_lo[2] + (k+Real(0.5)) * dx[2];
+#else
+    Real z = Real(0.);
+#endif
+
+    d_eta(i,j,k,0) = 0.0;
+    d_eta(i,j,k,1) = 0.0;
+    d_eta(i,j,k,2) = prob_hi[2] * ((b+1) - (b-1)*(std::pow((b+1)/(b-1),(1-z/prob_hi[2]))))
+                                / (std::pow((b+1)/(b-1),(1-z/prob_hi[2])) + 1)
+                   - z;
+}
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void init_phi (int i, int j, int k,
                amrex::Array4<amrex::Real> const& phi,
                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dx,

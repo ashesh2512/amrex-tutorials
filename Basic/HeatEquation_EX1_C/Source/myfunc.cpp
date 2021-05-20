@@ -86,21 +86,27 @@ void advance (MultiFab& phi_old,
     }
 }
 
-void init_phi(amrex::MultiFab& phi_new, amrex::Geometry const& geom){
+void init_vars(amrex::MultiFab& d_eta, amrex::MultiFab& phi,
+               amrex::Geometry const& geom, const amrex::Real beta){
 
     GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
     GpuArray<Real,AMREX_SPACEDIM> prob_lo = geom.ProbLoArray();
+    GpuArray<Real,AMREX_SPACEDIM> prob_hi = geom.ProbHiArray();
+
     // =======================================
-    // Initialize phi_new by calling a Fortran routine.
+    // Initialize phi by calling a Fortran routine.
     // MFIter = MultiFab Iterator
-    for (MFIter mfi(phi_new); mfi.isValid(); ++mfi)
+    for (MFIter mfi(phi); mfi.isValid(); ++mfi)
     {
         const Box& vbx = mfi.validbox();
-        auto const& phiNew = phi_new.array(mfi);
+        auto const& d_eta_var = d_eta.array(mfi);
+        auto const& phi_var = phi.array(mfi);
+
         amrex::ParallelFor(vbx,
         [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-            init_phi(i,j,k,phiNew,dx,prob_lo);
+            init_d_eta(i,j,k,beta,d_eta_var,dx,prob_lo,prob_hi);
+            init_phi(i,j,k,phi_var,dx,prob_lo);
         });
     }
 }
