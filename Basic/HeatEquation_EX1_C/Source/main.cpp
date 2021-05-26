@@ -66,7 +66,7 @@ void main_main ()
         // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
         ba.maxSize(max_grid_size);
 
-       // This defines the physical box, [-1,1] in each direction.
+       // This defines the physical box in each direction.
         RealBox real_box({AMREX_D_DECL( Real(0.0), Real(0.0), Real(0.0))},
                          {AMREX_D_DECL( Real(128), Real(128), Real(128))});
 
@@ -92,7 +92,8 @@ void main_main ()
     MultiFab phi_new(ba, dm, Ncomp_scalar, Nghost);
 
     // coordinate transformation parameter
-    MultiFab d_eta(ba, dm, Ncomp_vector, Nghost);
+    const BoxArray & nd_ba = amrex::convert(ba, IntVect{1,1,1}); // nodal grids
+    MultiFab d_eta(nd_ba, dm, Ncomp_vector, Nghost);
 
     GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
@@ -125,7 +126,6 @@ void main_main ()
 
         WriteMultiLevelPlotfile(pltfile, 1, vars, vnames, geomarr, time,
                                 level_steps, ref_ratio);
-//        WriteSingleLevelPlotfile(pltfile, d_eta, {"d_eta"}, geom, time, n);
     }
 
     // build the flux multifabs
@@ -165,7 +165,6 @@ void main_main ()
 
             WriteMultiLevelPlotfile(pltfile, 1, vars, vnames, geomarr, time,
                                     level_steps, ref_ratio);
-//            WriteSingleLevelPlotfile(pltfile, d_eta, {"d_eta"}, geom, time, n);
         }
     }
 

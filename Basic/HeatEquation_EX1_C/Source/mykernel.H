@@ -12,10 +12,10 @@ void init_d_eta(int i, int j, int k, amrex::Real b,
 {
     using amrex::Real;
 
-    Real x = prob_lo[0] + (i+Real(0.5)) * dx[0];
-    Real y = prob_lo[1] + (j+Real(0.5)) * dx[1];
+    Real x = prob_lo[0] + i * dx[0];
+    Real y = prob_lo[1] + j * dx[1];
 #if (AMREX_SPACEDIM > 2)
-    Real z = prob_lo[2] + (k+Real(0.5)) * dx[2];
+    Real z = prob_lo[2] + k * dx[2];
 #else
     Real z = Real(0.);
 #endif

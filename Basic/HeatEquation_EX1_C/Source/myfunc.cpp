@@ -94,6 +94,22 @@ void init_vars(amrex::MultiFab& d_eta, amrex::MultiFab& phi,
     GpuArray<Real,AMREX_SPACEDIM> prob_hi = geom.ProbHiArray();
 
     // =======================================
+    // Initialize d_eta by calling a Fortran routine.
+    // MFIter = MultiFab Iterator
+    for (MFIter mfi(d_eta); mfi.isValid(); ++mfi)
+    {
+        const Box& vbx = mfi.validbox();
+        auto const& d_eta_var = d_eta.array(mfi);
+        auto const& phi_var = phi.array(mfi);
+
+        amrex::ParallelFor(vbx,
+        [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+            init_d_eta(i,j,k,beta,d_eta_var,dx,prob_lo,prob_hi);
+        });
+    }
+
+    // =======================================
     // Initialize phi by calling a Fortran routine.
     // MFIter = MultiFab Iterator
     for (MFIter mfi(phi); mfi.isValid(); ++mfi)
@@ -105,7 +121,6 @@ void init_vars(amrex::MultiFab& d_eta, amrex::MultiFab& phi,
         amrex::ParallelFor(vbx,
         [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-            init_d_eta(i,j,k,beta,d_eta_var,dx,prob_lo,prob_hi);
             init_phi(i,j,k,phi_var,dx,prob_lo);
         });
     }
